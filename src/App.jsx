@@ -39,6 +39,8 @@ function getActions(item, view) {
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 const formatDate = (ts) => { const d = new Date(ts); return `${d.getDate()}/${d.getMonth() + 1}`; };
 const formatDateTime = (ts) => { const d = new Date(ts); return `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+const isSnoozed = (item) => item.snoozedUntil && item.snoozedUntil > Date.now();
+const toDateInputValue = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const INITIAL_DATA = { items: [], sources: SOURCES, destinations: DESTINATIONS };
 
@@ -76,19 +78,29 @@ function ToggleButtons({ options, value, onChange, color = "#3B82F6" }) {
   );
 }
 
-function ItemCard({ item, view, onStatusChange, onDelete }) {
+function ItemCard({ item, view, onStatusChange, onDelete, onSnooze }) {
   const isTask = !item.source && !item.destination;
-  const sc = STATUS_COLORS[item.status];
+  const snoozed = isSnoozed(item);
+  const sc = snoozed ? { bg: "#1E1B4B", text: "#818CF8", border: "#6366F1" } : STATUS_COLORS[item.status];
   const [open, setOpen] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
   const actions = getActions(item, view);
+
+  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
+  const snoozePresets = [
+    { label: "מחר", days: 1 },
+    { label: "3 ימים", days: 3 },
+    { label: "שבוע", days: 7 },
+  ];
 
   const meta = [];
   meta.push(`נוצר ${formatDateTime(item.created)} ע״י ${item.requester}`);
   if (item.collectedAt) meta.push(`נאסף ${formatDateTime(item.collectedAt)} ע״י ${item.collectedBy}`);
   if (item.doneAt) meta.push(`בוצע ${formatDateTime(item.doneAt)} ע״י ${item.doneBy}`);
+  if (snoozed) meta.push(`מושהה עד ${formatDate(item.snoozedUntil)}`);
 
   return (
-    <div style={{ background: "#1E293B", borderRadius: 12, padding: "12px 14px", marginBottom: 8, borderRight: `4px solid ${sc.border}` }}
+    <div style={{ background: "#1E293B", borderRadius: 12, padding: "12px 14px", marginBottom: 8, borderRight: `4px solid ${sc.border}`, opacity: snoozed ? 0.7 : 1 }}
       onClick={() => setOpen(!open)}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ flex: 1 }}>
@@ -97,9 +109,10 @@ function ItemCard({ item, view, onStatusChange, onDelete }) {
             {item.requester} · {formatDate(item.created)}
           </div>
           {item.note && <div style={{ color: "#F59E0B", fontSize: 12, marginTop: 4, fontFamily: "system-ui" }}>💬 {item.note}</div>}
+          {snoozed && <div style={{ color: "#818CF8", fontSize: 12, marginTop: 4, fontFamily: "system-ui" }}>😴 מושהה עד {formatDate(item.snoozedUntil)}</div>}
         </div>
         <div style={{ background: sc.bg, color: sc.text, padding: "4px 10px", borderRadius: 20, fontSize: 12, fontWeight: 600, fontFamily: "system-ui", whiteSpace: "nowrap", marginRight: 8 }}>
-          {statusLabel(item.status, view, isTask)}
+          {snoozed ? "😴 מושהה" : statusLabel(item.status, view, isTask)}
         </div>
       </div>
       {open && (
@@ -109,25 +122,52 @@ function ItemCard({ item, view, onStatusChange, onDelete }) {
               <div key={i} style={{ color: "#64748B", fontSize: 12, fontFamily: "system-ui", marginBottom: 2 }}>{m}</div>
             ))}
           </div>
-          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-            {actions.map(a => (
-              <button key={a.to} onClick={e => { e.stopPropagation(); onStatusChange(item.id, a.to); setOpen(false); }}
-                style={{ flex: 1, background: STATUS_COLORS[a.to].bg, color: STATUS_COLORS[a.to].text, border: "none", borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>
-                {a.label}
+          {showDatePicker ? (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }} onClick={e => e.stopPropagation()}>
+              {snoozePresets.map(p => (
+                <button key={p.days} onClick={() => { const d = new Date(); d.setDate(d.getDate() + p.days); d.setHours(8, 0, 0, 0); onSnooze(item.id, d.getTime()); setShowDatePicker(false); setOpen(false); }}
+                  style={{ background: "#312E81", color: "#A5B4FC", border: "none", borderRadius: 8, padding: "8px 14px", fontSize: 13, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>
+                  {p.label}
+                </button>
+              ))}
+              <input type="date" min={toDateInputValue(tomorrow)}
+                onChange={e => { const d = new Date(e.target.value); d.setHours(8, 0, 0, 0); onSnooze(item.id, d.getTime()); setShowDatePicker(false); setOpen(false); }}
+                style={{ background: "#0F172A", color: "#F1F5F9", border: "1px solid #334155", borderRadius: 8, padding: "6px 10px", fontSize: 13, fontFamily: "system-ui" }} />
+              <button onClick={() => setShowDatePicker(false)}
+                style={{ background: "#334155", color: "#94A3B8", border: "none", borderRadius: 8, padding: "8px 10px", fontSize: 13, fontFamily: "system-ui", cursor: "pointer" }}>ביטול</button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              {actions.map(a => (
+                <button key={a.to} onClick={e => { e.stopPropagation(); onStatusChange(item.id, a.to); setOpen(false); }}
+                  style={{ flex: 1, background: STATUS_COLORS[a.to].bg, color: STATUS_COLORS[a.to].text, border: "none", borderRadius: 8, padding: "8px 0", fontSize: 13, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>
+                  {a.label}
+                </button>
+              ))}
+              {snoozed ? (
+                <button onClick={e => { e.stopPropagation(); onSnooze(item.id, null); setOpen(false); }}
+                  style={{ background: "#312E81", color: "#A5B4FC", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>
+                  הסר השהייה
+                </button>
+              ) : (
+                <button onClick={e => { e.stopPropagation(); setShowDatePicker(true); }}
+                  style={{ background: "#312E81", color: "#A5B4FC", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "system-ui", cursor: "pointer" }}>
+                  😴
+                </button>
+              )}
+              <button onClick={e => { e.stopPropagation(); onDelete(item.id); }}
+                style={{ background: "#7F1D1D", color: "#FCA5A5", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "system-ui", cursor: "pointer" }}>
+                🗑
               </button>
-            ))}
-            <button onClick={e => { e.stopPropagation(); onDelete(item.id); }}
-              style={{ background: "#7F1D1D", color: "#FCA5A5", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "system-ui", cursor: "pointer" }}>
-              🗑
-            </button>
-          </div>
+            </div>
+          )}
         </>
       )}
     </div>
   );
 }
 
-function GroupedView({ items, groupBy, view, onStatusChange, onDelete }) {
+function GroupedView({ items, groupBy, view, onStatusChange, onDelete, onSnooze }) {
   const TASK_LABEL = "📋 משימות";
   const tasks = items.filter(it => !it.source && !it.destination);
   const supply = items.filter(it => it.source || it.destination);
@@ -143,7 +183,7 @@ function GroupedView({ items, groupBy, view, onStatusChange, onDelete }) {
         <span style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 700, fontFamily: "system-ui" }}>{label}</span>
         <span style={{ background: "#334155", color: "#94A3B8", borderRadius: 12, padding: "2px 10px", fontSize: 12, fontWeight: 600, fontFamily: "system-ui" }}>{groupItems.length}</span>
       </div>
-      {groupItems.map(it => <ItemCard key={it.id} item={it} view={view} onStatusChange={onStatusChange} onDelete={onDelete} />)}
+      {groupItems.map(it => <ItemCard key={it.id} item={it} view={view} onStatusChange={onStatusChange} onDelete={onDelete} onSnooze={onSnooze} />)}
     </div>
   );
 
@@ -307,7 +347,12 @@ export default function App() {
   };
 
   const handleDelete = (id) => persist({ ...data, items: (data.items || []).filter(it => it.id !== id) });
+  const handleSnooze = (id, until) => {
+    persist({ ...data, items: (data.items || []).map(it => it.id !== id ? it : { ...it, snoozedUntil: until }) });
+  };
   const handleUpdateSettings = (sources, destinations) => persist({ ...data, sources, destinations });
+
+  const [showSnoozed, setShowSnoozed] = useState(false);
 
   const handleViewChange = (v) => {
     setView(v);
@@ -334,10 +379,12 @@ export default function App() {
   if (loading || !data)
     return <div style={{ minHeight: "100dvh", background: "#0F172A", display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontFamily: "system-ui" }}>טוען...</div>;
 
-  const items = data.items || [];
+  const allItems = data.items || [];
+  const snoozedCount = allItems.filter(isSnoozed).length;
+  const items = showSnoozed ? allItems : allItems.filter(it => !isSnoozed(it));
   const filtered = statusFilter === "all" ? items : items.filter(it => it.status === statusFilter);
   const groupBy = view === "source" ? "source" : "destination";
-  const pendingCount = items.filter(i => i.status === S.PENDING).length;
+  const pendingCount = allItems.filter(i => i.status === S.PENDING && !isSnoozed(i)).length;
   const currentFilters = FILTERS[view];
 
   return (
@@ -351,6 +398,12 @@ export default function App() {
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <div style={{ background: "#422006", padding: "4px 12px", borderRadius: 20, color: "#FBBF24", fontSize: 13, fontWeight: 600 }}>⏳ {pendingCount} ממתינים</div>
+          {snoozedCount > 0 && (
+            <button onClick={() => setShowSnoozed(!showSnoozed)}
+              style={{ background: showSnoozed ? "#4338CA" : "#312E81", padding: "4px 12px", borderRadius: 20, color: "#A5B4FC", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
+              😴 {snoozedCount} מושהים
+            </button>
+          )}
           {!isConfigured && <div style={{ background: "#312E81", padding: "4px 12px", borderRadius: 20, color: "#A5B4FC", fontSize: 13, fontWeight: 600 }}>מצב מקומי</div>}
         </div>
         <div style={{ display: "flex", background: "#0F172A", borderRadius: 10, padding: 3 }}>
@@ -375,7 +428,7 @@ export default function App() {
       </div>
 
       <div style={{ padding: "4px 16px 100px" }}>
-        <GroupedView items={filtered} groupBy={groupBy} view={view} onStatusChange={handleStatusChange} onDelete={handleDelete} />
+        <GroupedView items={filtered} groupBy={groupBy} view={view} onStatusChange={handleStatusChange} onDelete={handleDelete} onSnooze={handleSnooze} />
       </div>
 
       <button onClick={() => setShowAdd(true)}
