@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { subscribeToData, saveData, isConfigured } from "./firebase";
 
 const SOURCES = ["ירדן- לוגיסטיקה", "ירדן- חימוש", "קשר", "לקנות", "תרומה"];
@@ -42,6 +42,16 @@ const formatDateTime = (ts) => { const d = new Date(ts); return `${d.getDate()}/
 const isSnoozed = (item) => item.snoozedUntil && item.snoozedUntil > Date.now();
 
 const INITIAL_DATA = { items: [], sources: SOURCES, destinations: DESTINATIONS };
+
+function normalizeData(raw) {
+  if (!raw) return INITIAL_DATA;
+  return {
+    ...raw,
+    items: Array.isArray(raw.items) ? raw.items : Object.values(raw.items || {}),
+    sources: Array.isArray(raw.sources) ? raw.sources : Object.values(raw.sources || {}),
+    destinations: Array.isArray(raw.destinations) ? raw.destinations : Object.values(raw.destinations || {}),
+  };
+}
 
 const FILTERS = {
   source: [
@@ -290,7 +300,7 @@ function EditableList({ items, onUpdate, color = "#3B82F6" }) {
   );
 }
 
-function SettingsSheet({ sources, destinations, onUpdate, onClose }) {
+function SettingsSheet({ sources, destinations, onUpdate, onClose, onLogout, userName }) {
   const [srcList, setSrcList] = useState([...sources]);
   const [dstList, setDstList] = useState([...destinations]);
   const handleSave = () => { onUpdate(srcList, dstList); onClose(); };
@@ -305,6 +315,15 @@ function SettingsSheet({ sources, destinations, onUpdate, onClose }) {
         <label style={labelStyle}>יעדים</label>
         <EditableList items={dstList} onUpdate={setDstList} color="#10B981" />
         <button onClick={handleSave} style={{ ...primaryBtnStyle, width: "100%", marginTop: 8, padding: "14px 0", fontSize: 16 }}>שמור</button>
+        <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid #334155" }}>
+          <div style={{ color: "#94A3B8", fontSize: 13, fontFamily: "system-ui", marginBottom: 8 }}>
+            מחובר כ: <span style={{ color: "#F1F5F9", fontWeight: 600 }}>{userName}</span>
+          </div>
+          <button onClick={onLogout}
+            style={{ width: "100%", background: "#7F1D1D", color: "#FCA5A5", border: "none", borderRadius: 10, padding: "12px 0", fontSize: 15, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>
+            התנתק
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -321,20 +340,29 @@ export default function App() {
   const [showAdd, setShowAdd] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   // Firebase realtime subscription — replaces polling
   useEffect(() => {
     if (!entered) return;
     const unsubscribe = subscribeToData((val) => {
-      setData(val || INITIAL_DATA);
+      setData(normalizeData(val));
       setLoading(false);
     });
     return unsubscribe;
   }, [entered]);
 
   const persist = async (newData) => {
-    setData(newData); // optimistic local update
-    await saveData(newData); // sync to Firebase
+    const prevData = data;
+    setData(newData);
+    try {
+      await saveData(newData);
+    } catch (e) {
+      console.error("Save failed:", e);
+      setData(prevData);
+      setError("שגיאה בשמירה, נסה שוב");
+      setTimeout(() => setError(null), 3000);
+    }
   };
 
   const handleAddItem = (item) => persist({ ...data, items: [item, ...(data.items || [])] });
@@ -351,7 +379,11 @@ export default function App() {
     })});
   };
 
-  const handleDelete = (id) => persist({ ...data, items: (data.items || []).filter(it => it.id !== id) });
+  const handleDelete = (id) => {
+    const item = (data.items || []).find(it => it.id === id);
+    if (!window.confirm(`למחוק את "${item?.item || ""}"?`)) return;
+    persist({ ...data, items: (data.items || []).filter(it => it.id !== id) });
+  };
   const [snoozeTarget, setSnoozeTarget] = useState(null); // item id to snooze
 
   const handleSnooze = (id, until) => {
@@ -361,7 +393,33 @@ export default function App() {
     if (removeUntil === null) { handleSnooze(id, null); return; }
     setSnoozeTarget(id);
   };
-  const handleUpdateSettings = (sources, destinations) => persist({ ...data, sources, destinations });
+  const handleLogout = () => {
+    localStorage.removeItem("logi_user_name");
+    setUserName("");
+    setEntered(false);
+    setData(null);
+    setShowSettings(false);
+  };
+
+  const handleUpdateSettings = (newSources, newDestinations) => {
+    const oldSources = data.sources || [];
+    const oldDestinations = data.destinations || [];
+    const srcRenames = {};
+    oldSources.forEach((name, i) => {
+      if (i < newSources.length && newSources[i] !== name) srcRenames[name] = newSources[i];
+    });
+    const dstRenames = {};
+    oldDestinations.forEach((name, i) => {
+      if (i < newDestinations.length && newDestinations[i] !== name) dstRenames[name] = newDestinations[i];
+    });
+    const updatedItems = (data.items || []).map(it => {
+      let updated = it;
+      if (it.source && srcRenames[it.source]) updated = { ...updated, source: srcRenames[it.source] };
+      if (it.destination && dstRenames[it.destination]) updated = { ...updated, destination: dstRenames[it.destination] };
+      return updated;
+    });
+    persist({ ...data, items: updatedItems, sources: newSources, destinations: newDestinations });
+  };
 
   const [showSnoozed, setShowSnoozed] = useState("hide"); // "hide" | "all" | "only"
 
@@ -404,6 +462,13 @@ export default function App() {
 
   return (
     <div style={{ minHeight: "100dvh", background: "#0F172A", direction: "rtl", fontFamily: "system-ui" }}>
+      {error && (
+        <div style={{ position: "fixed", top: 12, left: "50%", transform: "translateX(-50%)",
+          background: "#7F1D1D", color: "#FCA5A5", padding: "10px 20px", borderRadius: 10,
+          fontSize: 14, fontWeight: 600, fontFamily: "system-ui", zIndex: 200, direction: "rtl" }}>
+          {error}
+        </div>
+      )}
       <div style={{ background: "#1E293B", padding: "12px 16px", borderBottom: "1px solid #334155", position: "sticky", top: 0, zIndex: 50 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <span style={{ color: "#F8FAFC", fontSize: 20, fontWeight: 800 }}>📦 לוג׳י</span>
@@ -452,7 +517,7 @@ export default function App() {
       </button>
 
       {showAdd && <AddItemSheet sources={data.sources || SOURCES} destinations={data.destinations || DESTINATIONS} onAdd={handleAddItem} onClose={() => setShowAdd(false)} userName={userName} />}
-      {showSettings && <SettingsSheet sources={data.sources || SOURCES} destinations={data.destinations || DESTINATIONS} onUpdate={handleUpdateSettings} onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsSheet sources={data.sources || SOURCES} destinations={data.destinations || DESTINATIONS} onUpdate={handleUpdateSettings} onClose={() => setShowSettings(false)} onLogout={handleLogout} userName={userName} />}
       {snoozeTarget && <SnoozeSheet
         itemName={(allItems.find(it => it.id === snoozeTarget) || {}).item || ""}
         onSnooze={(until) => { handleSnooze(snoozeTarget, until); setSnoozeTarget(null); }}
