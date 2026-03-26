@@ -500,7 +500,12 @@ export default function App() {
     return <div style={{ minHeight: "100dvh", background: "#0F172A", display: "flex", alignItems: "center", justifyContent: "center", color: "#94A3B8", fontFamily: "system-ui" }}>טוען...</div>;
 
   const allItems = data.items || [];
+  const isTask = (it) => !it.source && !it.destination;
+  const supplyItems = allItems.filter(it => !isTask(it));
   const snoozedCount = allItems.filter(isSnoozed).length;
+  const pendingCount = supplyItems.filter(i => i.status === S.PENDING && !isSnoozed(i)).length;
+  const collectedCount = supplyItems.filter(i => i.status === S.COLLECTED && !isSnoozed(i)).length;
+  const taskCount = allItems.filter(it => isTask(it) && it.status !== S.DONE && !isSnoozed(it)).length;
   const activeItems = showSnoozed === "only"
     ? allItems.filter(isSnoozed)
     : showSnoozed === "all"
@@ -508,7 +513,6 @@ export default function App() {
     : allItems.filter(it => !isSnoozed(it));
   const filtered = statusFilter === "all" ? activeItems : activeItems.filter(it => it.status === statusFilter);
   const groupBy = view === "source" ? "source" : "destination";
-  const pendingCount = allItems.filter(i => i.status === S.PENDING && !isSnoozed(i)).length;
   const currentFilters = FILTERS[view];
 
   return (
@@ -527,15 +531,17 @@ export default function App() {
             <button onClick={() => setShowSettings(true)} style={iconBtnStyle}>⚙️</button>
           </div>
         </div>
-        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-          <div style={{ background: "#422006", padding: "4px 12px", borderRadius: 20, color: "#FBBF24", fontSize: 13, fontWeight: 600 }}>⏳ {pendingCount} ממתינים</div>
+        <div style={{ display: "flex", gap: 6, marginBottom: 10, flexWrap: "wrap" }}>
+          <div style={{ background: "#422006", padding: "4px 10px", borderRadius: 20, color: "#FBBF24", fontSize: 12, fontWeight: 600 }}>⏳ {pendingCount} ממתינים</div>
+          <div style={{ background: "#1E3A5F", padding: "4px 10px", borderRadius: 20, color: "#93C5FD", fontSize: 12, fontWeight: 600 }}>📦 {collectedCount} נאספו</div>
+          {taskCount > 0 && <div style={{ background: "#1A2332", padding: "4px 10px", borderRadius: 20, color: "#94A3B8", fontSize: 12, fontWeight: 600 }}>📋 {taskCount} משימות</div>}
           {snoozedCount > 0 && (
             <button onClick={() => setShowSnoozed(s => s === "hide" ? "all" : s === "all" ? "only" : "hide")}
-              style={{ background: showSnoozed !== "hide" ? "#4338CA" : "#312E81", padding: "4px 12px", borderRadius: 20, color: "#A5B4FC", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
+              style={{ background: showSnoozed !== "hide" ? "#4338CA" : "#312E81", padding: "4px 10px", borderRadius: 20, color: "#A5B4FC", fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer" }}>
               😴 {snoozedCount} {showSnoozed === "only" ? "מושהים בלבד" : "מושהים"}
             </button>
           )}
-          {!isConfigured && <div style={{ background: "#312E81", padding: "4px 12px", borderRadius: 20, color: "#A5B4FC", fontSize: 13, fontWeight: 600 }}>מצב מקומי</div>}
+          {!isConfigured && <div style={{ background: "#312E81", padding: "4px 10px", borderRadius: 20, color: "#A5B4FC", fontSize: 12, fontWeight: 600 }}>מצב מקומי</div>}
         </div>
         <div style={{ display: "flex", background: "#0F172A", borderRadius: 10, padding: 3 }}>
           {[{ key: "source", label: "📥 איסוף" }, { key: "dest", label: "📤 חלוקה" }].map(v => (
