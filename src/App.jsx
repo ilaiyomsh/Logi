@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { subscribeToData, saveData } from "./firebase";
+import { subscribeToData, saveData, isConfigured } from "./firebase";
 
 const SOURCES = ["ירדן- לוגיסטיקה", "ירדן- חימוש", "קשר", "לקנות", "תרומה"];
 const DESTINATIONS = ["מכולה", "מגן ישי", "בזלת"];
@@ -307,6 +307,7 @@ export default function App() {
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <div style={{ background: "#422006", padding: "4px 12px", borderRadius: 20, color: "#FBBF24", fontSize: 13, fontWeight: 600 }}>⏳ {pendingCount} ממתינים</div>
+          {!isConfigured && <div style={{ background: "#312E81", padding: "4px 12px", borderRadius: 20, color: "#A5B4FC", fontSize: 13, fontWeight: 600 }}>מצב מקומי</div>}
         </div>
         <div style={{ display: "flex", background: "#0F172A", borderRadius: 10, padding: 3 }}>
           {[{ key: "source", label: "📥 איסוף" }, { key: "dest", label: "📤 חלוקה" }].map(v => (

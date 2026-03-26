@@ -11,13 +11,27 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+const isConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.databaseURL);
 
-const DATA_REF = ref(db, 'logistics');
+let DATA_REF = null;
+if (isConfigured) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    DATA_REF = ref(db, 'logistics');
+  } catch (e) {
+    console.warn('Firebase init failed:', e);
+  }
+}
+
+export { isConfigured };
 
 // Subscribe to realtime updates — returns unsubscribe function
 export function subscribeToData(callback) {
+  if (!DATA_REF) {
+    callback(null);
+    return () => {};
+  }
   return onValue(DATA_REF, (snapshot) => {
     callback(snapshot.val());
   });
@@ -25,5 +39,6 @@ export function subscribeToData(callback) {
 
 // Write full data object
 export async function saveData(data) {
+  if (!DATA_REF) return;
   await set(DATA_REF, data);
 }
