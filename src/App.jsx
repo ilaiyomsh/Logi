@@ -101,7 +101,7 @@ function ItemCard({ item, view, onStatusChange, onDelete, onSnooze }) {
 
   return (
     <div style={{ background: "#1E293B", borderRadius: 12, padding: "12px 14px", marginBottom: 8, borderRight: `4px solid ${sc.border}`, opacity: snoozed ? 0.7 : 1 }}
-      onClick={() => setOpen(!open)}>
+      onClick={() => { if (!showDatePicker) setOpen(!open); }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{ flex: 1 }}>
           <div style={{ color: "#F1F5F9", fontSize: 15, fontWeight: 600, fontFamily: "system-ui", marginBottom: 4 }}>{item.item}</div>
@@ -352,7 +352,7 @@ export default function App() {
   };
   const handleUpdateSettings = (sources, destinations) => persist({ ...data, sources, destinations });
 
-  const [showSnoozed, setShowSnoozed] = useState(false);
+  const [showSnoozed, setShowSnoozed] = useState("hide"); // "hide" | "all" | "only"
 
   const handleViewChange = (v) => {
     setView(v);
@@ -381,8 +381,12 @@ export default function App() {
 
   const allItems = data.items || [];
   const snoozedCount = allItems.filter(isSnoozed).length;
-  const items = showSnoozed ? allItems : allItems.filter(it => !isSnoozed(it));
-  const filtered = statusFilter === "all" ? items : items.filter(it => it.status === statusFilter);
+  const activeItems = showSnoozed === "only"
+    ? allItems.filter(isSnoozed)
+    : showSnoozed === "all"
+    ? allItems
+    : allItems.filter(it => !isSnoozed(it));
+  const filtered = statusFilter === "all" ? activeItems : activeItems.filter(it => it.status === statusFilter);
   const groupBy = view === "source" ? "source" : "destination";
   const pendingCount = allItems.filter(i => i.status === S.PENDING && !isSnoozed(i)).length;
   const currentFilters = FILTERS[view];
@@ -399,9 +403,9 @@ export default function App() {
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
           <div style={{ background: "#422006", padding: "4px 12px", borderRadius: 20, color: "#FBBF24", fontSize: 13, fontWeight: 600 }}>⏳ {pendingCount} ממתינים</div>
           {snoozedCount > 0 && (
-            <button onClick={() => setShowSnoozed(!showSnoozed)}
-              style={{ background: showSnoozed ? "#4338CA" : "#312E81", padding: "4px 12px", borderRadius: 20, color: "#A5B4FC", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
-              😴 {snoozedCount} מושהים
+            <button onClick={() => setShowSnoozed(s => s === "hide" ? "all" : s === "all" ? "only" : "hide")}
+              style={{ background: showSnoozed !== "hide" ? "#4338CA" : "#312E81", padding: "4px 12px", borderRadius: 20, color: "#A5B4FC", fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer" }}>
+              😴 {snoozedCount} {showSnoozed === "only" ? "מושהים בלבד" : "מושהים"}
             </button>
           )}
           {!isConfigured && <div style={{ background: "#312E81", padding: "4px 12px", borderRadius: 20, color: "#A5B4FC", fontSize: 13, fontWeight: 600 }}>מצב מקומי</div>}
