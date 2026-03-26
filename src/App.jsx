@@ -198,23 +198,50 @@ function AddItemSheet({ sources, destinations, onAdd, onClose, userName }) {
   );
 }
 
-function SettingsSheet({ sources, destinations, onUpdate, onClose }) {
-  const [srcText, setSrcText] = useState(sources.join("\n"));
-  const [dstText, setDstText] = useState(destinations.join("\n"));
-  const handleSave = () => {
-    onUpdate(srcText.split("\n").map(s => s.trim()).filter(Boolean), dstText.split("\n").map(s => s.trim()).filter(Boolean));
-    onClose();
+function EditableList({ items, onUpdate, color = "#3B82F6" }) {
+  const [newItem, setNewItem] = useState("");
+  const handleAdd = () => {
+    const val = newItem.trim();
+    if (!val || items.includes(val)) return;
+    onUpdate([...items, val]);
+    setNewItem("");
   };
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+        {items.map(item => (
+          <div key={item} style={{ display: "flex", alignItems: "center", gap: 6, background: color + "22", border: `1px solid ${color}44`, borderRadius: 20, padding: "6px 8px 6px 14px" }}>
+            <span style={{ color, fontSize: 14, fontWeight: 600, fontFamily: "system-ui" }}>{item}</span>
+            <button onClick={() => onUpdate(items.filter(i => i !== item))}
+              style={{ background: "none", border: "none", color: "#EF4444", fontSize: 16, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}>✕</button>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input value={newItem} onChange={e => setNewItem(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleAdd(); }}
+          placeholder="הוסף..." style={{ ...inputStyle, flex: 1, marginBottom: 0 }} />
+        <button onClick={handleAdd} disabled={!newItem.trim()}
+          style={{ background: color, color: "#fff", border: "none", borderRadius: 10, padding: "0 16px", fontSize: 20, fontWeight: 700, cursor: "pointer", opacity: !newItem.trim() ? 0.4 : 1 }}>+</button>
+      </div>
+    </div>
+  );
+}
+
+function SettingsSheet({ sources, destinations, onUpdate, onClose }) {
+  const [srcList, setSrcList] = useState([...sources]);
+  const [dstList, setDstList] = useState([...destinations]);
+  const handleSave = () => { onUpdate(srcList, dstList); onClose(); };
   return (
     <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
       <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
       <div style={{ position: "relative", background: "#1E293B", borderRadius: "20px 20px 0 0", padding: "20px 16px 32px", direction: "rtl", maxHeight: "85dvh", overflowY: "auto" }}>
         <div style={{ width: 40, height: 4, background: "#475569", borderRadius: 2, margin: "0 auto 16px" }} />
         <h2 style={{ color: "#F8FAFC", fontSize: 18, fontWeight: 700, margin: "0 0 16px", fontFamily: "system-ui" }}>הגדרות</h2>
-        <label style={labelStyle}>מקורות (שורה לכל מקור)</label>
-        <textarea value={srcText} onChange={e => setSrcText(e.target.value)} rows={5} style={{ ...inputStyle, resize: "none" }} />
-        <label style={labelStyle}>יעדים (שורה לכל יעד)</label>
-        <textarea value={dstText} onChange={e => setDstText(e.target.value)} rows={3} style={{ ...inputStyle, resize: "none" }} />
+        <label style={labelStyle}>מקורות</label>
+        <EditableList items={srcList} onUpdate={setSrcList} color="#3B82F6" />
+        <label style={labelStyle}>יעדים</label>
+        <EditableList items={dstList} onUpdate={setDstList} color="#10B981" />
         <button onClick={handleSave} style={{ ...primaryBtnStyle, width: "100%", marginTop: 8, padding: "14px 0", fontSize: 16 }}>שמור</button>
       </div>
     </div>
