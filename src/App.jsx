@@ -200,19 +200,36 @@ function AddItemSheet({ sources, destinations, onAdd, onClose, userName }) {
 
 function EditableList({ items, onUpdate, color = "#3B82F6" }) {
   const [newItem, setNewItem] = useState("");
+  const [editingIndex, setEditingIndex] = useState(-1);
+  const [editValue, setEditValue] = useState("");
   const handleAdd = () => {
     const val = newItem.trim();
     if (!val || items.includes(val)) return;
     onUpdate([...items, val]);
     setNewItem("");
   };
+  const startEdit = (i) => { setEditingIndex(i); setEditValue(items[i]); };
+  const confirmEdit = () => {
+    const val = editValue.trim();
+    if (!val || (val !== items[editingIndex] && items.includes(val))) { setEditingIndex(-1); return; }
+    onUpdate(items.map((it, i) => i === editingIndex ? val : it));
+    setEditingIndex(-1);
+  };
   return (
     <div style={{ marginBottom: 16 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-        {items.map(item => (
-          <div key={item} style={{ display: "flex", alignItems: "center", gap: 6, background: color + "22", border: `1px solid ${color}44`, borderRadius: 20, padding: "6px 8px 6px 14px" }}>
-            <span style={{ color, fontSize: 14, fontWeight: 600, fontFamily: "system-ui" }}>{item}</span>
-            <button onClick={() => onUpdate(items.filter(i => i !== item))}
+        {items.map((item, i) => editingIndex === i ? (
+          <div key={i} style={{ display: "flex", gap: 4 }}>
+            <input value={editValue} onChange={e => setEditValue(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") confirmEdit(); if (e.key === "Escape") setEditingIndex(-1); }}
+              autoFocus style={{ ...inputStyle, width: 120, marginBottom: 0, padding: "6px 10px", fontSize: 14 }} />
+            <button onClick={confirmEdit}
+              style={{ background: color, color: "#fff", border: "none", borderRadius: 8, padding: "0 10px", fontSize: 14, cursor: "pointer" }}>✓</button>
+          </div>
+        ) : (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, background: color + "22", border: `1px solid ${color}44`, borderRadius: 20, padding: "6px 8px 6px 14px" }}>
+            <span onClick={() => startEdit(i)} style={{ color, fontSize: 14, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>{item}</span>
+            <button onClick={() => onUpdate(items.filter((_, j) => j !== i))}
               style={{ background: "none", border: "none", color: "#EF4444", fontSize: 16, cursor: "pointer", padding: "0 4px", lineHeight: 1 }}>✕</button>
           </div>
         ))}
