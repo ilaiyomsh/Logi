@@ -117,7 +117,7 @@ function SnoozeSheet({ itemName, onSnooze, onClose }) {
   );
 }
 
-function ItemCard({ item, view, onStatusChange, onDelete, onRequestSnooze }) {
+function ItemCard({ item, view, onStatusChange, onDelete, onRequestSnooze, onEdit }) {
   const isTask = !item.source && !item.destination;
   const snoozed = isSnoozed(item);
   const sc = snoozed ? { bg: "#1E1B4B", text: "#818CF8", border: "#6366F1" } : STATUS_COLORS[item.status];
@@ -160,6 +160,10 @@ function ItemCard({ item, view, onStatusChange, onDelete, onRequestSnooze }) {
                 {a.label}
               </button>
             ))}
+            <button onClick={e => { e.stopPropagation(); onEdit(item); }}
+              style={{ background: "#1E3A5F", color: "#93C5FD", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontFamily: "system-ui", cursor: "pointer" }}>
+              ✏️
+            </button>
             {snoozed ? (
               <button onClick={e => { e.stopPropagation(); onRequestSnooze(item.id, null); setOpen(false); }}
                 style={{ background: "#312E81", color: "#A5B4FC", border: "none", borderRadius: 8, padding: "8px 12px", fontSize: 13, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>
@@ -182,7 +186,7 @@ function ItemCard({ item, view, onStatusChange, onDelete, onRequestSnooze }) {
   );
 }
 
-function GroupedView({ items, groupBy, view, onStatusChange, onDelete, onRequestSnooze }) {
+function GroupedView({ items, groupBy, view, onStatusChange, onDelete, onRequestSnooze, onEdit }) {
   const TASK_LABEL = "📋 משימות";
   const tasks = items.filter(it => !it.source && !it.destination);
   const supply = items.filter(it => it.source || it.destination);
@@ -198,7 +202,7 @@ function GroupedView({ items, groupBy, view, onStatusChange, onDelete, onRequest
         <span style={{ color: "#E2E8F0", fontSize: 15, fontWeight: 700, fontFamily: "system-ui" }}>{label}</span>
         <span style={{ background: "#334155", color: "#94A3B8", borderRadius: 12, padding: "2px 10px", fontSize: 12, fontWeight: 600, fontFamily: "system-ui" }}>{groupItems.length}</span>
       </div>
-      {groupItems.map(it => <ItemCard key={it.id} item={it} view={view} onStatusChange={onStatusChange} onDelete={onDelete} onRequestSnooze={onRequestSnooze} />)}
+      {groupItems.map(it => <ItemCard key={it.id} item={it} view={view} onStatusChange={onStatusChange} onDelete={onDelete} onRequestSnooze={onRequestSnooze} onEdit={onEdit} />)}
     </div>
   );
 
@@ -247,6 +251,49 @@ function AddItemSheet({ sources, destinations, onAdd, onClose, userName }) {
           disabled={!item.trim()}
           style={{ ...primaryBtnStyle, width: "100%", marginTop: 8, padding: "14px 0", fontSize: 16, opacity: !item.trim() ? 0.4 : 1 }}>
           {source || dest ? "הוסף דרישה" : "הוסף משימה"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function EditItemSheet({ editItem, sources, destinations, onSave, onClose }) {
+  const [item, setItem] = useState(editItem.item);
+  const [source, setSource] = useState(editItem.source || "");
+  const [dest, setDest] = useState(editItem.destination || "");
+  const [note, setNote] = useState(editItem.note || "");
+
+  const handleSubmit = () => {
+    if (!item.trim()) return;
+    onSave({ ...editItem, item: item.trim(), source: source || "", destination: dest || "", note: note.trim() });
+    onClose();
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+      <div onClick={onClose} style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.5)" }} />
+      <div style={{ position: "relative", background: "#1E293B", borderRadius: "20px 20px 0 0", padding: "20px 16px 32px", direction: "rtl", maxHeight: "85dvh", overflowY: "auto" }}>
+        <div style={{ width: 40, height: 4, background: "#475569", borderRadius: 2, margin: "0 auto 16px" }} />
+        <h2 style={{ color: "#F8FAFC", fontSize: 18, fontWeight: 700, margin: "0 0 16px", fontFamily: "system-ui" }}>עריכת פריט</h2>
+
+        <label style={labelStyle}>פריט</label>
+        <input value={item} onChange={e => setItem(e.target.value)} placeholder="מה צריך?" style={inputStyle} autoFocus />
+
+        <label style={labelStyle}>מקור (אופציונלי)</label>
+        <ToggleButtons options={sources} value={source} onChange={setSource} color="#3B82F6" />
+        <div style={{ height: 12 }} />
+
+        <label style={labelStyle}>יעד (אופציונלי)</label>
+        <ToggleButtons options={destinations} value={dest} onChange={setDest} color="#10B981" />
+        <div style={{ height: 12 }} />
+
+        <label style={labelStyle}>הערות</label>
+        <input value={note} onChange={e => setNote(e.target.value)} placeholder="אופציונלי" style={inputStyle} />
+
+        <button onClick={handleSubmit}
+          disabled={!item.trim()}
+          style={{ ...primaryBtnStyle, width: "100%", marginTop: 8, padding: "14px 0", fontSize: 16, opacity: !item.trim() ? 0.4 : 1 }}>
+          שמור
         </button>
       </div>
     </div>
@@ -339,6 +386,7 @@ export default function App() {
   const [statusFilter, setStatusFilter] = useState(S.PENDING);
   const [showAdd, setShowAdd] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -366,6 +414,9 @@ export default function App() {
   };
 
   const handleAddItem = (item) => persist({ ...data, items: [item, ...(data.items || [])] });
+  const handleEditItem = (updated) => {
+    persist({ ...data, items: (data.items || []).map(it => it.id === updated.id ? updated : it) });
+  };
 
   const handleStatusChange = (id, s) => {
     const now = Date.now();
@@ -508,7 +559,7 @@ export default function App() {
       </div>
 
       <div style={{ padding: "4px 16px 100px" }}>
-        <GroupedView items={filtered} groupBy={groupBy} view={view} onStatusChange={handleStatusChange} onDelete={handleDelete} onRequestSnooze={handleRequestSnooze} />
+        <GroupedView items={filtered} groupBy={groupBy} view={view} onStatusChange={handleStatusChange} onDelete={handleDelete} onRequestSnooze={handleRequestSnooze} onEdit={setEditingItem} />
       </div>
 
       <button onClick={() => setShowAdd(true)}
@@ -522,6 +573,12 @@ export default function App() {
         itemName={(allItems.find(it => it.id === snoozeTarget) || {}).item || ""}
         onSnooze={(until) => { handleSnooze(snoozeTarget, until); setSnoozeTarget(null); }}
         onClose={() => setSnoozeTarget(null)} />}
+      {editingItem && <EditItemSheet
+        editItem={editingItem}
+        sources={data.sources || SOURCES}
+        destinations={data.destinations || DESTINATIONS}
+        onSave={(updated) => { handleEditItem(updated); setEditingItem(null); }}
+        onClose={() => setEditingItem(null)} />}
     </div>
   );
 }
