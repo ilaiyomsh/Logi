@@ -40,7 +40,6 @@ const generateId = () => Date.now().toString(36) + Math.random().toString(36).sl
 const formatDate = (ts) => { const d = new Date(ts); return `${d.getDate()}/${d.getMonth() + 1}`; };
 const formatDateTime = (ts) => { const d = new Date(ts); return `${d.getDate()}/${d.getMonth() + 1} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
 const isSnoozed = (item) => item.snoozedUntil && item.snoozedUntil > Date.now();
-const toDateInputValue = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 
 const INITIAL_DATA = { items: [], sources: SOURCES, destinations: DESTINATIONS };
 
@@ -79,12 +78,10 @@ function ToggleButtons({ options, value, onChange, color = "#3B82F6" }) {
 }
 
 function SnoozeSheet({ itemName, onSnooze, onClose }) {
-  const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1);
   const presets = [
     { label: "מחר", days: 1 },
     { label: "3 ימים", days: 3 },
     { label: "שבוע", days: 7 },
-    { label: "שבועיים", days: 14 },
   ];
   const handlePreset = (days) => {
     const d = new Date(); d.setDate(d.getDate() + days); d.setHours(8, 0, 0, 0);
@@ -97,18 +94,14 @@ function SnoozeSheet({ itemName, onSnooze, onClose }) {
         <div style={{ width: 40, height: 4, background: "#475569", borderRadius: 2, margin: "0 auto 16px" }} />
         <h2 style={{ color: "#F8FAFC", fontSize: 18, fontWeight: 700, margin: "0 0 4px", fontFamily: "system-ui" }}>😴 השהייה</h2>
         <p style={{ color: "#94A3B8", fontSize: 14, margin: "0 0 16px", fontFamily: "system-ui" }}>{itemName}</p>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 8 }}>
           {presets.map(p => (
             <button key={p.days} onClick={() => handlePreset(p.days)}
-              style={{ flex: "1 1 calc(50% - 4px)", background: "#312E81", color: "#A5B4FC", border: "none", borderRadius: 10, padding: "14px 0", fontSize: 15, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>
+              style={{ flex: 1, background: "#312E81", color: "#A5B4FC", border: "none", borderRadius: 10, padding: "14px 0", fontSize: 15, fontWeight: 600, fontFamily: "system-ui", cursor: "pointer" }}>
               {p.label}
             </button>
           ))}
         </div>
-        <label style={labelStyle}>תאריך מותאם</label>
-        <input type="date" min={toDateInputValue(tomorrow)}
-          onChange={e => { const d = new Date(e.target.value); d.setHours(8, 0, 0, 0); onSnooze(d.getTime()); }}
-          style={{ ...inputStyle, marginBottom: 0 }} />
       </div>
     </div>
   );
