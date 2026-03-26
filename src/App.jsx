@@ -224,8 +224,8 @@ function SettingsSheet({ sources, destinations, onUpdate, onClose }) {
 // ─── Main App ───
 
 export default function App() {
-  const [userName, setUserName] = useState("");
-  const [entered, setEntered] = useState(false);
+  const [userName, setUserName] = useState(() => localStorage.getItem("logi_user_name") || "");
+  const [entered, setEntered] = useState(() => Boolean(localStorage.getItem("logi_user_name")));
   const [data, setData] = useState(null);
   const [view, setView] = useState("source");
   const [statusFilter, setStatusFilter] = useState(S.PENDING);
@@ -278,9 +278,9 @@ export default function App() {
           <h1 style={{ color: "#F8FAFC", fontSize: 28, fontWeight: 800, margin: "0 0 4px", fontFamily: "system-ui" }}>לוג׳י</h1>
           <p style={{ color: "#94A3B8", fontSize: 14, margin: "0 0 24px", fontFamily: "system-ui" }}>ניהול לוגיסטיקה פלוגתית</p>
           <input value={userName} onChange={e => setUserName(e.target.value)}
-            onKeyDown={e => { if (e.key === "Enter" && userName.trim()) setEntered(true); }}
+            onKeyDown={e => { if (e.key === "Enter" && userName.trim()) { localStorage.setItem("logi_user_name", userName.trim()); setEntered(true); } }}
             placeholder="השם שלך" style={inputStyle} />
-          <button onClick={() => { if (userName.trim()) setEntered(true); }}
+          <button onClick={() => { if (userName.trim()) { localStorage.setItem("logi_user_name", userName.trim()); setEntered(true); } }}
             style={{ ...primaryBtnStyle, width: "100%", padding: "14px 0", fontSize: 16, marginTop: 4 }}>כניסה</button>
         </div>
       </div>
