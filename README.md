@@ -9,19 +9,19 @@
 - **משימות** — פריטים ללא מקור/יעד (מופיעים תמיד למעלה)
 - **סטטוסים** — טרם נאסף → נאסף → בוצע (עם מטא-דאטה: מי ומתי)
 
------
+---
 
 ## התקנה — 3 שלבים
 
 ### שלב 1: Firebase
 
 1. היכנס ל-[Firebase Console](https://console.firebase.google.com/)
-1. לחץ **Add project** → תן שם (למשל `logi`) → צור
-1. בתפריט הצדדי: **Build → Realtime Database → Create Database**
-1. בחר מיקום (europe-west1 מומלץ) → **Start in test mode** → Enable
-1. בתפריט הצדדי: **Project settings** (גלגל השיניים) → גלול למטה → **Add app** → בחר Web (אייקון `</>`)
-1. תן שם (למשל `logi-web`) → **Register app**
-1. תקבל בלוק `firebaseConfig` — **שמור את הערכים**, תצטרך אותם בשלב הבא
+2. לחץ **Add project** → תן שם (למשל `logi`) → צור
+3. בתפריט הצדדי: **Build → Realtime Database → Create Database**
+4. בחר מיקום (europe-west1 מומלץ) → **Start in test mode** → Enable
+5. בתפריט הצדדי: **Project settings** (גלגל השיניים) → גלול למטה → **Add app** → בחר Web (אייקון `</>`)
+6. תן שם (למשל `logi-web`) → **Register app**
+7. תקבל בלוק `firebaseConfig` — **שמור את הערכים**, תצטרך אותם בשלב הבא
 
 #### אבטחה (אופציונלי אבל מומלץ)
 
@@ -43,26 +43,26 @@
 ### שלב 2: Vercel
 
 1. העלה את הפרויקט ל-GitHub (ריפו חדש)
-1. היכנס ל-[Vercel](https://vercel.com) → **Add New Project** → ייבא את הריפו
-1. לפני Deploy, ב-**Environment Variables** הוסף את הערכים מ-Firebase:
+2. היכנס ל-[Vercel](https://vercel.com) → **Add New Project** → ייבא את הריפו
+3. לפני Deploy, ב-**Environment Variables** הוסף את הערכים מ-Firebase:
 
-|Variable                           |ערך              |
-|-----------------------------------|-----------------|
-|`VITE_FIREBASE_API_KEY`            |מה-firebaseConfig|
-|`VITE_FIREBASE_AUTH_DOMAIN`        |מה-firebaseConfig|
-|`VITE_FIREBASE_DATABASE_URL`       |מה-firebaseConfig|
-|`VITE_FIREBASE_PROJECT_ID`         |מה-firebaseConfig|
-|`VITE_FIREBASE_STORAGE_BUCKET`     |מה-firebaseConfig|
-|`VITE_FIREBASE_MESSAGING_SENDER_ID`|מה-firebaseConfig|
-|`VITE_FIREBASE_APP_ID`             |מה-firebaseConfig|
+| Variable | ערך |
+|---|---|
+| `VITE_FIREBASE_API_KEY` | מה-firebaseConfig |
+| `VITE_FIREBASE_AUTH_DOMAIN` | מה-firebaseConfig |
+| `VITE_FIREBASE_DATABASE_URL` | מה-firebaseConfig |
+| `VITE_FIREBASE_PROJECT_ID` | מה-firebaseConfig |
+| `VITE_FIREBASE_STORAGE_BUCKET` | מה-firebaseConfig |
+| `VITE_FIREBASE_MESSAGING_SENDER_ID` | מה-firebaseConfig |
+| `VITE_FIREBASE_APP_ID` | מה-firebaseConfig |
 
-1. לחץ **Deploy**
+4. לחץ **Deploy**
 
 ### שלב 3: שימוש
 
 שתף את ה-URL שקיבלת מ-Vercel עם הצוות. כל אחד נכנס עם השם שלו ורואה את אותם נתונים ב-realtime.
 
------
+---
 
 ## פיתוח מקומי
 
@@ -77,7 +77,7 @@ cp .env.example .env
 npm run dev
 ```
 
------
+---
 
 ## מבנה קבצים
 
